@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>IndexedDB Notes</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            max-width: 600px;
+            margin: auto;
+            padding: 20px;
+        }
+
+        textarea,
+        button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+        }
+
+        ul {
+            padding: 0;
+            list-style: none;
+        }
+
+        li {
+            background: #f0f0f0;
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <h2>My Notes (stored with IndexedDB)</h2>
+    <textarea id="note" placeholder="Write your note here..."></textarea>
+    <button onclick="addNote()">Add Note</button>
+    <ul id="noteList"></ul>
+
+    <script>
+        let db;
+        const request = indexedDB.open("NotesDB", 1);
+
+        request.onerror = (event) => {
+            console.error("Database error:", event.target.errorCode);
+        };
+
+        request.onupgradeneeded = (event) => {
+            db = event.target.result;
+            db.createObjectStore("notes", { autoIncrement: true });
+        };
+
+        request.onsuccess = (event) => {
+            db = event.target.result;
+            loadNotes();
+        };
+
+        function addNote() {
+            const text = document.getElementById("note").value;
+            const tx = db.transaction("notes", "readwrite");
+            const store = tx.objectStore("notes");
+            store.add(text);
+            tx.oncomplete = () => {
+                document.getElementById("note").value = "";
+                loadNotes();
+            };
+        }
+
+        function loadNotes() {
+            const noteList = document.getElementById("noteList");
+            noteList.innerHTML = "";
+            const tx = db.transaction("notes", "readonly");
+            const store = tx.objectStore("notes");
+
+            store.openCursor().onsuccess = (event) => {
+                const cursor = event.target.result;
+                if (cursor) {
+                    const li = document.createElement("li");
+                    li.textContent = cursor.value;
+                    noteList.appendChild(li);
+                    cursor.continue();
+                }
+            };
+        }
+    </script>
+</body>
+
+</html>

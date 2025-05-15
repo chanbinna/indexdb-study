@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>LocalStorage Counter</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            text-align: center;
+            padding-top: 100px;
+        }
+
+        img {
+            width: 200px;
+        }
+
+        #count {
+            font-size: 48px;
+            margin: 20px 0;
+        }
+
+        button {
+            font-size: 24px;
+            height: 60px;
+            width: 60px;
+            margin: 5px;
+            border-radius: 30px;
+            border: none;
+            background-color: rgb(212, 212, 212);
+        }
+    </style>
+</head>
+
+<body>
+    <img src="https://images.vexels.com/media/users/3/264613/isolated/preview/08bcb373a3ed126ce0c739286f26c883-pasta-illustration-food.png"
+        alt="">
+    <h1>Kiet's Pasta Counter App</h1>
+    <div id="count">0</div>
+    <button onclick="changeCount(-1)">–</button>
+    <button onclick="changeCount(1)">+</button>
+    <p class="pasta-count"></p>
+
+    <script>
+        const countEl = document.getElementById("count");
+        const pastaText = document.querySelector(".pasta-count");
+
+        // Load saved count from localStorage or start at 0
+        let count = parseInt(localStorage.getItem("count")) || 0;
+        countEl.textContent = count;
+
+        function changeCount(delta) {
+            count += delta;
+            countEl.textContent = count;
+
+            localStorage.setItem("count", count);
+        }
+    </script>
+</body>
+
+</html>
