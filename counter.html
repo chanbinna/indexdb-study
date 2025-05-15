@@ -3,12 +3,12 @@
 
 <head>
     <meta charset="UTF-8" />
-    <title>LocalStorage Counter</title>
+    <title>Kiet's Pasta Counter with Comments</title>
     <style>
         body {
             font-family: sans-serif;
             text-align: center;
-            padding-top: 100px;
+            padding-top: 50px;
         }
 
         img {
@@ -20,7 +20,7 @@
             margin: 20px 0;
         }
 
-        button {
+        .plus-button {
             font-size: 24px;
             height: 60px;
             width: 60px;
@@ -28,6 +28,113 @@
             border-radius: 30px;
             border: none;
             background-color: rgb(212, 212, 212);
+            cursor: pointer;
+        }
+
+        .comment-box {
+            margin-top: 40px;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .large-box {
+            gap: 20px;
+        }
+
+        .small {
+            display: flex;
+        }
+
+        input,
+        textarea {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        textarea {
+            margin-top: 20px;
+            width: 96%;
+        }
+
+
+
+        button[type="submit"],
+        .plus-button {
+            transition: 0.2s;
+        }
+
+        button[type="submit"]:hover,
+        .plus-button:hover {
+            background-color: #ddd;
+        }
+
+        .comment-box {
+            margin-top: 160px;
+            margin-bottom: 100px;
+        }
+
+        .comment {
+            margin-top: 10px;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: left;
+            position: relative;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+            background-color: #f6f6f6;
+        }
+
+        .comment .user {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .comment button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: none;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .comment-box button {
+            top: 10px;
+            right: 10px;
+            background: none;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+
+
+        @media (min-width: 600px) {
+            .large-box {
+                flex-direction: row;
+            }
+
+            .large-box input {
+                flex: 1;
+                margin-right: 10px;
+            }
+
+            .large-box textarea {
+                flex: 2;
+                margin-right: 10px;
+            }
+
+            .large-box button {
+                width: 120px;
+                font-size: 16px;
+                border-radius: 8px;
+                background-color: #dcdcdc;
+            }
         }
     </style>
 </head>
@@ -37,24 +144,119 @@
         alt="">
     <h1>Kiet's Pasta Counter App</h1>
     <div id="count">0</div>
-    <button onclick="changeCount(-1)">–</button>
-    <button onclick="changeCount(1)">+</button>
-    <p class="pasta-count"></p>
+    <button onclick="updateCount(-1)" class="plus-button">–</button>
+    <button onclick="updateCount(1)" class="plus-button">+</button>
 
-    <script>
+    <div class="comment-box">
+        <h2>Leave a Comment</h2>
+        <div class="large-box">
+            <div class="small">
+
+                <input type="text" id="username" placeholder="Your name" />
+                <button onclick="submitComment()">Submit</button>
+            </div>
+            <textarea id="comment" rows="3" placeholder="Your comment"></textarea>
+
+        </div>
+
+        <div id="comments"></div>
+    </div>
+
+    <!-- Firebase CDN -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
+        import {
+            getFirestore,
+            doc,
+            setDoc,
+            getDoc,
+            updateDoc,
+            onSnapshot,
+            collection,
+            addDoc,
+            query,
+            orderBy,
+            onSnapshot as onCommentsSnapshot
+        } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
+
+        // Replace this with your own config
+        const firebaseConfig = {
+            apiKey: "AIzaSyAx8-juwk-9UIW35Lqs5rMdsuk67mtgJzc",
+            authDomain: "pasta-counter.firebaseapp.com",
+            projectId: "pasta-counter",
+            storageBucket: "pasta-counter.firebasestorage.app",
+            messagingSenderId: "833723623105",
+            appId: "1:833723623105:web:8401c8a23f049e41a39640",
+            measurementId: "G-D0T8DDND8P"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        const countDoc = doc(db, "global", "pastaCount");
+        const commentsCol = collection(db, "comments");
+
         const countEl = document.getElementById("count");
-        const pastaText = document.querySelector(".pasta-count");
+        const commentsEl = document.getElementById("comments");
 
-        // Load saved count from localStorage or start at 0
-        let count = parseInt(localStorage.getItem("count")) || 0;
-        countEl.textContent = count;
+        // 👂 Live counter listener
+        onSnapshot(countDoc, (docSnap) => {
+            if (docSnap.exists()) {
+                countEl.textContent = docSnap.data().count;
+            } else {
+                setDoc(countDoc, { count: 0 }, { merge: true });
+            }
+        });
 
-        function changeCount(delta) {
-            count += delta;
-            countEl.textContent = count;
+        // 👂 Live comment listener
+        const q = query(commentsCol, orderBy("createdAt", "desc"));
+        onCommentsSnapshot(q, (querySnapshot) => {
+            commentsEl.innerHTML = "";
+            querySnapshot.forEach((doc) => {
+                const data = doc.data();
+                const div = document.createElement("div");
+                div.className = "comment";
+                div.innerHTML = `
+                    <div class="user">${data.username}</div>
+                    <div>${data.comment}</div>
+                    <button onclick="deleteComment('${doc.id}')">🗑️ Delete</button>`;
+                commentsEl.appendChild(div);
+            });
+        });
 
-            localStorage.setItem("count", count);
-        }
+        // ✅ Expose functions to global scope
+        window.updateCount = async function (delta) {
+            const docSnap = await getDoc(countDoc);
+            const current = docSnap.exists() ? docSnap.data().count || 0 : 0;
+            await setDoc(countDoc, { count: current + delta }, { merge: true });
+        };
+
+        window.submitComment = async function () {
+            const username = document.getElementById("username").value.trim();
+            const comment = document.getElementById("comment").value.trim();
+
+            if (username && comment) {
+                await addDoc(commentsCol, {
+                    username,
+                    comment,
+                    createdAt: new Date()
+                });
+
+                document.getElementById("username").value = "";
+                document.getElementById("comment").value = "";
+            } else {
+                alert("Please fill in both fields.");
+            }
+        };
+
+        import { deleteDoc, doc as firestoreDoc } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
+
+        window.deleteComment = async function (id) {
+            if (confirm("Are you sure you want to delete this comment?")) {
+                const commentRef = firestoreDoc(db, "comments", id);
+                await deleteDoc(commentRef);
+            }
+        };
     </script>
 </body>
 
